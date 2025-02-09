@@ -139,6 +139,7 @@ public class Main {
 
         // Краткая статистика
         if(sFlag){
+            System.out.println("\n=Short stat=\n");
             System.out.println("Integers added count: " + intList.size());
             System.out.println("Floats added count: " + floatList.size());
             System.out.println("Strings added count: " + strList.size());
@@ -239,6 +240,7 @@ public class Main {
                 floatAverage = 0;
             }
 
+            System.out.println("\n=Full stat=");
             System.out.println("Integers added count: " + intList.size() + ", min: " + minInt +", max: " + maxInt + ", sum: " + sumInt + ", avg: " + intAverage);
             System.out.println("Floats added count: " + floatList.size() + ", min: " + minFloat +", max: " + maxFloat + ", sum: " + sumFloat + ", avg: " + floatAverage);
             System.out.println("Strings added count: " + strList.size() + ", min str: " + minStringType + ", size: " + minStr + " | max str: " + maxStringType + ", size: " +  maxStr);
