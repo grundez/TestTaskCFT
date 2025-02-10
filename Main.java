@@ -13,10 +13,12 @@ public class Main {
     private static final Pattern TXT_FILE_PATTERN = Pattern.compile(".*\\.txt$"); // Файл текстовый
     private static final Pattern VALID_PATH = Pattern.compile("^[^/\\\\:*?\"<>|\\r\\n]+(?:[\\\\/][^/\\\\:*?\"<>|\\r\\n]+)*\\/?$");
     private static final Pattern VALID_PREFIX = Pattern.compile("^[a-zA-Z0-9_-]+$");
+    private static final Pattern POSITIVE_INTEGER = Pattern.compile("[1-9]\\d*");
 
     // Флаги и конфигурация их параметров
-    public static boolean sFlag = false, fFlag = false, aFlag = false, pFlag = false, oFlag = false;
+    public static boolean sFlag = false, fFlag = false, aFlag = false, pFlag = false, oFlag = false, rFlag = false;
     public static String prefix = "", path = "";
+    public static int repeatCount = 1;
 
     // Метод считывавния информации с файлов
     public static void readFile(String fileName, List<String> data){
@@ -51,35 +53,24 @@ public class Main {
             System.exit(1);
         }
 
-        // Собираем все файлы
-        List<String> files = new ArrayList<>();
-        for (String arg : args) {
-            if (TXT_FILE_PATTERN.matcher(arg).matches()) { // Проверяем, что аргумент не является флагом
-                files.add(arg);
-            }
-        }
-
-        if(files.isEmpty()){
-            System.out.println("No files found");
-            System.exit(1);
-        }
-
-        // Проверяем, что файлы имеют расширение *.txt
-        List<String> data = new ArrayList<>();
-        for (String file : files) {
-            if (!file.endsWith(".txt")) { // !!! Бесполезная проверка после добавления регулярных выражений (убрать потом)
-                System.out.println("Error: expected .txt file, but got: " + file);
-                System.exit(1);
-            }
-            else{
-                readFile(file, data);
-            }
-        }
-
-        for (int i = 0; i < args.length - 1; i++) {
+        // Сканнер флагов и их параметров
+        for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
-                case "-s": sFlag = true; break;
-                case "-f": fFlag = true; break;
+                case "-s":
+                    if(!fFlag){
+                        sFlag = true;
+                    }
+                    else{
+                        System.out.println("Flag -s was corrupt by -f");
+                    }
+                    break;
+                case "-f":
+                    fFlag = true;
+                    if(sFlag){
+                        sFlag = false;
+                        System.out.println("Flag -s was corrupt by -f");
+                    }
+                    break;
                 case "-a": aFlag = true; break;
                 case "-p":
                     pFlag = true;
@@ -107,7 +98,59 @@ public class Main {
                         i++;
                     }
                     break;
+                case "-r":
+                    if(!POSITIVE_INTEGER.matcher(args[i + 1]).matches()){
+                        System.out.println("Error: invalid repeat param, excepted positive integer number, got: " + args[i + 1]);
+                        System.exit(1);
+                    }
+                    else{
+                        rFlag = true;
+                        repeatCount = Integer.parseInt(args[i + 1]);
+                    }
+                    break;
+                default: break;
             }
+        }
+
+        // Собираем все файлы
+        List<String> files = new ArrayList<>();
+        for (String arg : args) {
+            // Проверяем, что аргумент - файл формата *.txt и уникален
+            if (TXT_FILE_PATTERN.matcher(arg).matches() && !files.contains(arg)) {
+                // Отработка флага -r
+                for(int i = 0; i <= repeatCount - 1; i++){
+                    files.add(arg);
+                }
+            }
+            // Если файл уже есть - выведем сообщение, но не проверим
+            else if(files.contains(arg)){
+                System.out.println("File already in collection: " + arg);
+            }
+            // Если файл не соответствует формату *.txt и не является валидным префиксом
+            else if (!VALID_PREFIX.matcher(arg).matches()) {
+                System.out.println("Skip invalid TXT file: " + arg);
+            }
+        }
+
+        if(files.isEmpty()){
+            System.out.println("No files found");
+            System.exit(1);
+        }
+
+        // Проверяем, что файлы имеют расширение *.txt
+        List<String> data = new ArrayList<>();
+        for (String file : files) {
+            /* !!! Бесполезная проверка после добавления регулярных выражений !!!
+            if (!file.endsWith(".txt")) {
+                System.out.println("Error: expected .txt file, but got: " + file);
+                System.exit(1);
+            }
+            else{
+                readFile(file, data);
+            }
+            */
+
+            readFile(file, data);
         }
 
         // Создаю контейнеры под разные типы
@@ -139,7 +182,7 @@ public class Main {
 
         // Краткая статистика
         if(sFlag){
-            System.out.println("\n=Short stat=\n");
+            System.out.println("\n=Short stat=");
             System.out.println("Integers added count: " + intList.size());
             System.out.println("Floats added count: " + floatList.size());
             System.out.println("Strings added count: " + strList.size());
@@ -147,19 +190,19 @@ public class Main {
 
         // Полная статистика
         if(fFlag){
-            int minInt, maxInt, sumInt;
-            float minFloat, maxFloat, sumFloat;
-            int minStr, maxStr;
+            long minInt, maxInt, sumInt; // Параметры статисики int данных
+            float minFloat, maxFloat, sumFloat; // Параметры статисики float данных
+            long minStr, maxStr; // Параметры статисики str данных
             String minStringType, maxStringType;
 
             /* Инициализация, для сортировки min/max сначала беру первый элемент контейнеров
-            * и сравниваю его с отсальными элементами, вместо уставноки 1e9/-1e9 для min/max, соотвественно
+            * и сравниваю его с отсальными элементами, вместо установки 1e9/-1e9 для min/max, соотвественно
             *  */
             if(!intList.isEmpty()){
-                minInt = Integer.parseInt(intList.getFirst());
-                maxInt = Integer.parseInt(intList.getFirst());
+                minInt = Long.parseLong(intList.getFirst());
+                maxInt = Long.parseLong(intList.getFirst());
                 // В сумму положил первый элемент, тк циклы со второго
-                sumInt = Integer.parseInt(intList.getFirst());
+                sumInt = Long.parseLong(intList.getFirst());
             }
             else{
                 minInt = 0;
@@ -195,7 +238,7 @@ public class Main {
 
             // Поиск мин/макс и суммы
             for(int i = 1; i < intList.size(); i++){
-                int numInt = Integer.parseInt(intList.get(i));
+                long numInt = Long.parseLong(intList.get(i));
                 sumInt += numInt;
                 if(numInt < minInt) minInt = numInt;
                 if(numInt > maxInt) maxInt = numInt;
@@ -241,9 +284,9 @@ public class Main {
             }
 
             System.out.println("\n=Full stat=");
-            System.out.println("Integers added count: " + intList.size() + ", min: " + minInt +", max: " + maxInt + ", sum: " + sumInt + ", avg: " + intAverage);
-            System.out.println("Floats added count: " + floatList.size() + ", min: " + minFloat +", max: " + maxFloat + ", sum: " + sumFloat + ", avg: " + floatAverage);
-            System.out.println("Strings added count: " + strList.size() + ", min str: " + minStringType + ", size: " + minStr + " | max str: " + maxStringType + ", size: " +  maxStr);
+            System.out.println("-------------\nIntegers added count: " + intList.size() + "\nMin: " + minInt +"\nMax: " + maxInt + "\nSum: " + sumInt + "\nAvg: " + intAverage);
+            System.out.println("-------------\nFloats added count: " + floatList.size() + "\nMin: " + minFloat +"\nMax: " + maxFloat + "\nSum: " + sumFloat + "\nAvg: " + floatAverage);
+            System.out.println("-------------\nStrings added count: " + strList.size() + "\nMin string: " + minStringType + ", size: " + minStr + "\nMax string: " + maxStringType + ", size: " +  maxStr + "\n-------------");
         }
     }
 
