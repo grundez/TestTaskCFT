@@ -53,8 +53,30 @@ public class Main {
             System.exit(1);
         }
 
+        // Собираем все файлы
+        List<String> files = new ArrayList<>();
+        for (String arg : args) {
+            // Проверяем, что аргумент - файл формата *.txt и уникален
+            if (TXT_FILE_PATTERN.matcher(arg).matches() && !files.contains(arg)) {
+                files.add(arg);
+            }
+            // Если файл уже есть - выведем сообщение, но не проверим
+            else if(files.contains(arg)){
+                System.out.println("File already in collection: " + arg);
+            }
+            // Если файл не соответствует формату *.txt и не является валидным префиксом и путем
+            else if (!VALID_PREFIX.matcher(arg).matches() && !VALID_PATH.matcher(arg).matches()) {
+                System.out.println("Skip invalid TXT file: " + arg);
+            }
+        }
+
+        if(files.isEmpty()){
+            System.out.println("No files found");
+            System.exit(1);
+        }
+
         // Сканнер флагов и их параметров
-        for (int i = 0; i < args.length; i++) {
+        for (int i = 0; i < args.length - files.size(); i++) {
             switch (args[i]) {
                 case "-s":
                     if(!fFlag){
@@ -106,38 +128,14 @@ public class Main {
                     else{
                         rFlag = true;
                         repeatCount = Integer.parseInt(args[i + 1]);
+                        i++;
                     }
                     break;
-                default: break;
+                default: System.out.println("Unknown param: " + args[i] ); break;
             }
         }
 
-        // Собираем все файлы
-        List<String> files = new ArrayList<>();
-        for (String arg : args) {
-            // Проверяем, что аргумент - файл формата *.txt и уникален
-            if (TXT_FILE_PATTERN.matcher(arg).matches() && !files.contains(arg)) {
-                // Отработка флага -r
-                for(int i = 0; i <= repeatCount - 1; i++){
-                    files.add(arg);
-                }
-            }
-            // Если файл уже есть - выведем сообщение, но не проверим
-            else if(files.contains(arg)){
-                System.out.println("File already in collection: " + arg);
-            }
-            // Если файл не соответствует формату *.txt и не является валидным префиксом
-            else if (!VALID_PREFIX.matcher(arg).matches()) {
-                System.out.println("Skip invalid TXT file: " + arg);
-            }
-        }
-
-        if(files.isEmpty()){
-            System.out.println("No files found");
-            System.exit(1);
-        }
-
-        // Проверяем, что файлы имеют расширение *.txt
+        // Считываем файлы
         List<String> data = new ArrayList<>();
         for (String file : files) {
             /* !!! Бесполезная проверка после добавления регулярных выражений !!!
@@ -150,7 +148,9 @@ public class Main {
             }
             */
 
-            readFile(file, data);
+            for(int i = 0; i < repeatCount; i++){
+                readFile(file, data);
+            }
         }
 
         // Создаю контейнеры под разные типы
